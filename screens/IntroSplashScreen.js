@@ -1,116 +1,124 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  StyleSheet,
   View,
+  Text,
+  StyleSheet,
   Animated,
+  Dimensions,
   StatusBar,
   Easing,
-  Text,
-  Dimensions,
 } from 'react-native';
-import {
-  widthPercentageToDP as wp,
-  heightPercentageToDP as hp,
-} from 'react-native-responsive-screen';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-// Responsive icon size: 18% of screen width feels balanced on all devices
-const ICON_SIZE = wp('18%');
-// How far apart icon and text split — tuned so combined width stays centred
-const SPLIT_DISTANCE = ICON_SIZE * 1.1;
-
+// Added { onFinish } prop
 const IntroSplashScreen = ({ onFinish }) => {
-  const iconOpacity   = useRef(new Animated.Value(0)).current;
-  const iconScale     = useRef(new Animated.Value(0.4)).current;
+  // Animation Controller Values (Exactly as provided)
+  const iconScale = useRef(new Animated.Value(0.3)).current;
+  const iconOpacity = useRef(new Animated.Value(0)).current;
   const iconTranslateX = useRef(new Animated.Value(0)).current;
-  const textOpacity   = useRef(new Animated.Value(0)).current;
-  const textTranslateX = useRef(new Animated.Value(0)).current;
+  
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textTranslateX = useRef(new Animated.Value(40)).current; 
+  const textScale = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
     Animated.sequence([
-      // 1. Icon appears in centre
+      // PHASE 1: The Impact Entry
       Animated.parallel([
-        Animated.timing(iconOpacity, {
+        Animated.spring(iconScale, {
           toValue: 1,
-          duration: 700,
+          tension: 20,
+          friction: 7,
           useNativeDriver: true,
         }),
-        Animated.timing(iconScale, {
+        Animated.timing(iconOpacity, {
           toValue: 1,
-          duration: 700,
-          easing: Easing.out(Easing.back(1.3)),
+          duration: 600,
           useNativeDriver: true,
         }),
       ]),
 
-      // Brief pause before split
-      Animated.delay(350),
+      Animated.delay(700), // Cinematic pause
 
-      // 2. Icon slides left, text fades in from centre sliding right
+      // PHASE 2: The "Split" Reveal
       Animated.parallel([
         Animated.timing(iconTranslateX, {
-          toValue: -SPLIT_DISTANCE,
+          toValue: -75, 
           duration: 900,
-          easing: Easing.bezier(0.16, 1, 0.3, 1),
+          easing: Easing.bezier(0.23, 1, 0.32, 1),
           useNativeDriver: true,
         }),
         Animated.timing(textOpacity, {
           toValue: 1,
-          duration: 700,
-          delay: 150,
+          duration: 800,
+          delay: 100,
           useNativeDriver: true,
         }),
         Animated.timing(textTranslateX, {
-          toValue: ICON_SIZE * 0.55,
+          toValue: 35, 
           duration: 900,
-          easing: Easing.bezier(0.16, 1, 0.3, 1),
+          easing: Easing.bezier(0.23, 1, 0.32, 1),
           useNativeDriver: true,
         }),
+        Animated.timing(textScale, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.out(Easing.exp),
+          useNativeDriver: true,
+        })
       ]),
+      
+      Animated.delay(1000), // Hold the final look for a moment
     ]).start(() => {
-      setTimeout(() => {
-        if (onFinish) onFinish();
-      }, 1800);
+      // Trigger the transition once animation is done
+      if (onFinish) onFinish();
     });
   }, []);
 
   return (
     <View style={styles.container}>
-      <StatusBar hidden />
-
-      <View style={styles.logoContainer}>
-        {/* Icon */}
-        <Animated.Image
-          source={require('../assets/transparent icon.png')}
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      
+      <View style={styles.contentWrapper}>
+        <Animated.View
           style={[
-            styles.icon,
+            styles.iconWrapper,
             {
               opacity: iconOpacity,
               transform: [
                 { scale: iconScale },
-                { translateX: iconTranslateX },
+                { translateX: iconTranslateX }
               ],
             },
           ]}
-          resizeMode="contain"
-        />
+        >
+          <Animated.Image
+            source={require('../assets/k-icon.png')} 
+            style={styles.icon}
+            resizeMode="contain"
+          />
+        </Animated.View>
 
-        {/* Brand name */}
         <Animated.View
           style={[
             styles.textWrapper,
             {
               opacity: textOpacity,
-              transform: [{ translateX: textTranslateX }],
+              transform: [
+                { translateX: textTranslateX },
+                { scale: textScale }
+              ],
             },
           ]}
         >
-          <Text style={styles.brandName} allowFontScaling={false}>
-            kynect
-          </Text>
+          <Text style={styles.appName}>Kynect</Text>
         </Animated.View>
       </View>
+
+      <Animated.View style={[styles.footer, { opacity: textOpacity }]}>
+        <View style={styles.indicator} />
+      </Animated.View>
     </View>
   );
 };
@@ -118,33 +126,51 @@ const IntroSplashScreen = ({ onFinish }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-    alignItems: 'center',
+    backgroundColor: '#000',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  logoContainer: {
+  contentWrapper: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
-    height: ICON_SIZE * 1.4,
+  },
+  iconWrapper: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   icon: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-    position: 'absolute',
+    width: 230,
+    height: 200,
+    left: 8,
+    top: 3
   },
   textWrapper: {
     position: 'absolute',
-    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  brandName: {
-    color: '#FFFFFF',
-    fontSize: ICON_SIZE * 0.92,   // scales proportionally with icon
-    fontWeight: '700',
-    letterSpacing: -1.5,
-    fontFamily: 'System',
+  appName: {
+    color: '#FFF',
+    fontSize: 46,
+    fontWeight: '800',
+    letterSpacing: -2,
+    fontFamily: 'System', 
   },
+  footer: {
+    position: 'absolute',
+    bottom: 60,
+    alignItems: 'center',
+  },
+  indicator: {
+    width: 30,
+    height: 3,
+    backgroundColor: '#333',
+    borderRadius: 10,
+  }
 });
 
 export default IntroSplashScreen;
