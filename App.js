@@ -1,20 +1,31 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import IntroSplashScreen from './screens/IntroSplashScreen';
 
 export default function App() {
+  const [isReady, setIsReady] = useState(false);
+
+  if (!isReady) {
+    return <IntroSplashScreen onFinish={() => setIsReady(true)} />;
+  }
+
+  // Your Main App Content
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
+    <View style={styles.main}>
+      <Text style={styles.welcome}>Kynect App Ready</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  main: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    backgroundColor: '#000',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  welcome: {
+    color: '#fff',
+    fontSize: 20,
   },
 });
