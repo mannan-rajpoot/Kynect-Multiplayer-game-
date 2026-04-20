@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   },
   brandName: {
     color: '#FFFFFF',
-    fontSize: ICON_SIZE * 0.72,   // scales proportionally with icon
+    fontSize: ICON_SIZE * 0.92,   // scales proportionally with icon
     fontWeight: '700',
     letterSpacing: -1.5,
     fontFamily: 'System',
