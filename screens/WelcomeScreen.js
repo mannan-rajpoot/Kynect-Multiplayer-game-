@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StatusBar,
   Dimensions,
-  ScrollView,
   Platform,
   PixelRatio,
 } from 'react-native';
@@ -15,71 +14,88 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
-// Responsive Font Helper
 const scale = width / 375;
 const normalize = (size) => {
   const newSize = size * scale;
-  if (Platform.OS === 'ios') {
-    return Math.round(PixelRatio.roundToNearestPixel(newSize));
-  } else {
-    return Math.round(PixelRatio.roundToNearestPixel(newSize)) - 2;
-  }
+  return Math.round(PixelRatio.roundToNearestPixel(newSize));
 };
 
 const WelcomeScreen = ({ onFinish }) => {
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
+
+      {/* Background glows */}
+      <View style={styles.topGlow} />
+      <View style={styles.bottomGlow} />
+
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          {/* 1. TOP LOGO SECTION */}
+        <View style={styles.inner}>
+
+          {/* HEADER */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoIcon}>
-                <View style={styles.logoInnerCircle} />
-              </View>
+            
               <Text style={styles.logoText}>Kynect</Text>
+            </View>
+
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>LIVE</Text>
             </View>
           </View>
 
-          {/* 2. ILLUSTRATION SECTION */}
+          {/* IMAGE */}
           <View style={styles.imageContainer}>
             <Image
-              source={require('../assets/Team goals-pana.png')} 
+              source={require('../assets/Team goals-pana.png')}
               style={styles.illustration}
               resizeMode="contain"
             />
           </View>
 
-          {/* 3. CONTENT SECTION */}
+          {/* CONTENT */}
           <View style={styles.contentContainer}>
+
+            <View style={styles.eyebrowRow}>
+              <View style={styles.eyebrowLine} />
+              <Text style={styles.eyebrowText}>MULTIPLAYER GAMING</Text>
+              <View style={styles.eyebrowLine} />
+            </View>
+
             <Text style={styles.headline}>
-              Good managers{'\n'}mean better{'\n'}sales growth.
-            </Text>
-            
-            <Text style={styles.subheadline}>
-              Join entrepreneurs driving impact and growing their businesses.
+              Play fast.{'\n'}
+              Connect instantly.{'\n'}
+              <Text style={styles.headlineAccent}>Win together.</Text>
             </Text>
 
-           
+            <Text style={styles.subheadline}>
+              Real-time multiplayer games with friends or random players.
+              Challenge. Compete. Conquer.
+            </Text>
+
           </View>
 
-          {/* 5. BUTTON SECTION (Inside Scroll to ensure visibility on small screens) */}
+          {/* FOOTER */}
           <View style={styles.footer}>
-            <TouchableOpacity 
-              style={styles.button} 
-              activeOpacity={0.8}
+
+
+
+            <TouchableOpacity
+              style={styles.button}
+              activeOpacity={0.85}
               onPress={onFinish}
             >
               <Text style={styles.buttonText}>Get Started</Text>
             </TouchableOpacity>
+
+            <Text style={styles.footerNote}>
+              Free to play • No account required
+            </Text>
+
           </View>
-        </ScrollView>
+
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -88,109 +104,212 @@ const WelcomeScreen = ({ onFinish }) => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#121212',
   },
+
   safeArea: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1, // Ensures the content takes up full height to allow center/bottom alignment
+
+  inner: {
+    flex: 1,
     justifyContent: 'space-between',
-    paddingBottom: Platform.OS === 'ios' ? 10 : 30,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 28,
   },
+
+  /* GLOW BACKGROUND */
+  topGlow: {
+    position: 'absolute',
+    top: -width * 0.3,
+    right: -width * 0.2,
+    width: width * 0.7,
+    height: width * 0.7,
+    borderRadius: width * 0.35,
+    backgroundColor: '#8B5CF6',
+    opacity: 0.08,
+  },
+
+  bottomGlow: {
+    position: 'absolute',
+    bottom: -width * 0.25,
+    left: -width * 0.15,
+    width: width * 0.6,
+    height: width * 0.6,
+    borderRadius: width * 0.3,
+    backgroundColor: '#22D3EE',
+    opacity: 0.05,
+  },
+
+  /* HEADER */
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: height * 0.02, // Responsive top margin
+    justifyContent: 'center',
+    paddingHorizontal: width * 0.06,
+    paddingTop: height * 0.02,
   },
+
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
+
   logoIcon: {
-    width: normalize(22),
-    height: normalize(22),
-    borderRadius: normalize(11),
+    width: normalize(24),
+    height: normalize(24),
+    borderRadius: normalize(12),
     borderWidth: 2,
-    borderColor: '#9D8BFF',
+    borderColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
+
   logoInnerCircle: {
-    width: normalize(8),
-    height: normalize(8),
-    borderRadius: normalize(4),
-    backgroundColor: '#9D8BFF',
+    width: normalize(9),
+    height: normalize(9),
+    borderRadius: 5,
+    backgroundColor: '#8B5CF6',
   },
+
   logoText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: normalize(22),
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontWeight: '800',
   },
+
+  liveBadge: {
+    position: 'absolute',
+    right: width * 0.06,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 211, 238, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 211, 238, 0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    top: 19
+  },
+
+  liveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#22D3EE',
+    marginRight: 5,
+  },
+
+  liveText: {
+    color: '#22D3EE',
+    fontSize: normalize(10),
+    fontWeight: '700',
+  },
+
+  /* IMAGE */
   imageContainer: {
-    height: height * 0.4, // Takes up 40% of screen height exactly
+    height: height * 0.38,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: height * 0.02,
   },
+
   illustration: {
     width: width * 0.9,
     height: '100%',
   },
+
+  /* CONTENT */
   contentContainer: {
-    paddingHorizontal: width * 0.08, // Responsive side padding
-    justifyContent: 'center',
+    paddingHorizontal: width * 0.08,
   },
-  headline: {
-    color: '#FFF',
-    fontSize: normalize(34),
+
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  eyebrowLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(139, 92, 246, 0.25)',
+  },
+
+  eyebrowText: {
+    color: '#8B5CF6',
+    fontSize: normalize(10),
     fontWeight: '700',
-    lineHeight: normalize(42),
+    letterSpacing: 2,
+    marginHorizontal: 10,
   },
+
+  headline: {
+    color: '#FFFFFF',
+    fontSize: normalize(32),
+    fontWeight: '800',
+    lineHeight: normalize(40),
+  },
+
+  headlineAccent: {
+    color: '#8B5CF6',
+  },
+
   subheadline: {
-    color: '#999',
-    fontSize: normalize(16),
-    marginTop: height * 0.02,
-    lineHeight: normalize(24),
+    color: '#A1A1AA',
+    fontSize: normalize(14),
+    marginTop: 14,
+    lineHeight: normalize(22),
   },
+
+  /* FOOTER */
+  footer: {
+    paddingHorizontal: width * 0.06,
+    alignItems: 'center',
+  },
+
   pagination: {
     flexDirection: 'row',
-    marginTop: height * 0.03,
+    marginBottom: 18,
   },
+
   dot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#333',
-    marginRight: 8,
+    marginRight: 7,
   },
+
   activeDot: {
-    width: 24,
-    backgroundColor: '#ffffff',
+    width: 22,
+    backgroundColor: '#8B5CF6',
   },
-  footer: {
-    paddingHorizontal: 20,
-    marginTop: height * 0.04, // Space between content and button
-  },
+
   button: {
-    backgroundColor: '#ffffff',
-    height: normalize(58),
-    borderRadius: normalize(29),
+    backgroundColor: '#8B5CF6',
+    height: normalize(54),
+    borderRadius: normalize(27),
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    // Added shadow for premium feel
-    shadowColor: "#9D8BFF",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 8,
+    shadowColor: '#8B5CF6',
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
   },
+
   buttonText: {
-    color: '#1A1A1A',
-    fontSize: normalize(18),
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: normalize(16),
+    fontWeight: '800',
+  },
+
+  footerNote: {
+    color: '#666',
+    fontSize: normalize(12),
+    marginTop: 10,
   },
 });
 

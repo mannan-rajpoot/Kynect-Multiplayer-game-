@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   indicator: {
     width: 30,
     height: 3,
-    backgroundColor: '#333',
+    backgroundColor: '#8B5CF6',
     borderRadius: 10,
   }
 });
