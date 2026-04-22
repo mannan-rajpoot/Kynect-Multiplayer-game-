@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,91 +9,114 @@ import {
   Dimensions,
   Platform,
   PixelRatio,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
+// ─── Responsive Utilities ──────────────────────────────────────────────────
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-const scale = width / 375;
-const normalize = (size) => {
-  const newSize = size * scale;
-  return Math.round(PixelRatio.roundToNearestPixel(newSize));
+const isSmall   = SCREEN_W < 360;
+const isMedium  = SCREEN_W >= 360 && SCREEN_W < 414;
+const isTablet  = SCREEN_W >= 768;
+
+const BASE_W = 375;
+const BASE_H = 812;
+
+const rs = (size) => Math.round(PixelRatio.roundToNearestPixel(size * (SCREEN_W / BASE_W)));
+const vs = (size) => Math.round(PixelRatio.roundToNearestPixel(size * (SCREEN_H / BASE_H)));
+const ms = (size, factor = 0.5) => Math.round(size + (rs(size) - size) * factor);
+
+const adaptive = ({ small, medium, large, tablet }) => {
+  if (isTablet) return tablet ?? large ?? medium ?? small;
+  return medium ?? small;
 };
 
+// ─── Entrance Animation Hook ───────────────────────────────────────────────
+const useEntrance = (delay = 0) => {
+  const opacity    = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(25)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity,    { toValue: 1, duration: 600, delay, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 600, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  return { opacity, transform: [{ translateY }] };
+};
+
+// ─── Main Component ────────────────────────────────────────────────────────
 const WelcomeScreen = ({ onFinish }) => {
+  
+  // Animation sequences matching AuthScreen
+  const a0 = useEntrance(100);  // Logo
+  const a1 = useEntrance(250);  // Illustration
+  const a2 = useEntrance(400);  // Headline
+  const a3 = useEntrance(550);  // Subheadline
+  const a4 = useEntrance(700);  // Footer
+
   return (
-    <View style={styles.mainContainer}>
+    <View style={s.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Background glows */}
-      <View style={styles.topGlow} />
-      <View style={styles.bottomGlow} />
+      <SafeAreaView style={s.safe}>
+        <View style={s.inner}>
+          
+          {/* 1. HEADER / LOGO */}
+          <Animated.View style={[s.header, a0]}>
+            <Text style={s.logo}>Kynect<Text style={s.dot}>.</Text></Text>
+          </Animated.View>
 
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.inner}>
-
-          {/* HEADER */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-            
-              <Text style={styles.logoText}>Kynect</Text>
-            </View>
-
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          </View>
-
-          {/* IMAGE */}
-          <View style={styles.imageContainer}>
+          {/* 2. ILLUSTRATION */}
+          <Animated.View style={[s.imageContainer, a1]}>
             <Image
               source={require('../assets/Team goals-pana.png')}
-              style={styles.illustration}
+              style={s.illustration}
               resizeMode="contain"
             />
+          </Animated.View>
+
+          {/* 3. CONTENT SECTION */}
+          <View style={s.contentContainer}>
+            <Animated.View style={[s.eyebrowRow, a2]}>
+              <View style={s.eyebrowLine} />
+              <Text style={s.eyebrowText}>MULTIPLAYER GAMING</Text>
+              <View style={s.eyebrowLine} />
+            </Animated.View>
+
+            <Animated.View style={a2}>
+              <Text style={s.headline}>
+                Play fast.{'\n'}
+                Connect instantly.{'\n'}
+                <Text style={s.headlineAccent}>Win together.</Text>
+              </Text>
+            </Animated.View>
+
+            <Animated.View style={a3}>
+              <Text style={s.subheadline}>
+                Real-time multiplayer games with friends or random players.
+                Challenge. Compete. Conquer.
+              </Text>
+            </Animated.View>
           </View>
 
-          {/* CONTENT */}
-          <View style={styles.contentContainer}>
-
-            <View style={styles.eyebrowRow}>
-              <View style={styles.eyebrowLine} />
-              <Text style={styles.eyebrowText}>MULTIPLAYER GAMING</Text>
-              <View style={styles.eyebrowLine} />
-            </View>
-
-            <Text style={styles.headline}>
-              Play fast.{'\n'}
-              Connect instantly.{'\n'}
-              <Text style={styles.headlineAccent}>Win together.</Text>
-            </Text>
-
-            <Text style={styles.subheadline}>
-              Real-time multiplayer games with friends or random players.
-              Challenge. Compete. Conquer.
-            </Text>
-
-          </View>
-
-          {/* FOOTER */}
-          <View style={styles.footer}>
-
-
-
+          {/* 4. FOOTER / BUTTON */}
+          <Animated.View style={[s.footer, a4]}>
             <TouchableOpacity
-              style={styles.button}
+              style={s.button}
               activeOpacity={0.85}
               onPress={onFinish}
             >
-              <Text style={styles.buttonText}>Get Started</Text>
+              <Text style={s.buttonText}>Get Started</Text>
+              <View style={s.btnArrow}>
+                 <Text style={s.arrowChar}>→</Text>
+              </View>
             </TouchableOpacity>
 
-            <Text style={styles.footerNote}>
-              Free to play • No account required
+            <Text style={s.footerNote}>
+              Free to play | Secured Access
             </Text>
-
-          </View>
+          </Animated.View>
 
         </View>
       </SafeAreaView>
@@ -101,215 +124,127 @@ const WelcomeScreen = ({ onFinish }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: '#121212',
+// ─── Stylesheet ────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  root: { 
+    flex: 1, 
+    backgroundColor: '#000000' // Pure Black Background
   },
-
-  safeArea: {
-    flex: 1,
-  },
-
+  safe: { flex: 1 },
   inner: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingBottom: Platform.OS === 'ios' ? 10 : 28,
-  },
-
-  /* GLOW BACKGROUND */
-  topGlow: {
-    position: 'absolute',
-    top: -width * 0.3,
-    right: -width * 0.2,
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
-    backgroundColor: '#8B5CF6',
-    opacity: 0.08,
-  },
-
-  bottomGlow: {
-    position: 'absolute',
-    bottom: -width * 0.25,
-    left: -width * 0.15,
-    width: width * 0.6,
-    height: width * 0.6,
-    borderRadius: width * 0.3,
-    backgroundColor: '#22D3EE',
-    opacity: 0.05,
+    paddingBottom: vs(20),
   },
 
   /* HEADER */
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: width * 0.06,
-    paddingTop: height * 0.02,
+    paddingTop: vs(20),
   },
-
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-
-  logoIcon: {
-    width: normalize(24),
-    height: normalize(24),
-    borderRadius: normalize(12),
-    borderWidth: 2,
-    borderColor: '#8B5CF6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-
-  logoInnerCircle: {
-    width: normalize(9),
-    height: normalize(9),
-    borderRadius: 5,
-    backgroundColor: '#8B5CF6',
-  },
-
-  logoText: {
+  logo: {
     color: '#FFFFFF',
-    fontSize: normalize(22),
-    fontWeight: '800',
+    fontSize: ms(24),
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-
-  liveBadge: {
-    position: 'absolute',
-    right: width * 0.06,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(34, 211, 238, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(34, 211, 238, 0.3)',
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    top: 19
-  },
-
-  liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#22D3EE',
-    marginRight: 5,
-  },
-
-  liveText: {
-    color: '#22D3EE',
-    fontSize: normalize(10),
-    fontWeight: '700',
-  },
+  dot: { color: '#8B5CF6' },
 
   /* IMAGE */
   imageContainer: {
-    height: height * 0.38,
+    height: SCREEN_H * 0.35,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   illustration: {
-    width: width * 0.9,
+    width: SCREEN_W * 0.85,
     height: '100%',
   },
 
   /* CONTENT */
   contentContainer: {
-    paddingHorizontal: width * 0.08,
+    paddingHorizontal: rs(30),
   },
-
   eyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: vs(12),
   },
-
   eyebrowLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(139, 92, 246, 0.25)',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
   },
-
   eyebrowText: {
     color: '#8B5CF6',
-    fontSize: normalize(10),
-    fontWeight: '700',
+    fontSize: ms(9),
+    fontWeight: '800',
     letterSpacing: 2,
-    marginHorizontal: 10,
+    marginHorizontal: rs(10),
   },
-
   headline: {
     color: '#FFFFFF',
-    fontSize: normalize(32),
-    fontWeight: '800',
-    lineHeight: normalize(40),
+    fontSize: ms(adaptive({ small: 30, medium: 34, large: 38 })),
+    fontWeight: '900',
+    lineHeight: ms(adaptive({ small: 38, medium: 42, large: 46 })),
+    letterSpacing: -1,
   },
-
   headlineAccent: {
     color: '#8B5CF6',
   },
-
   subheadline: {
-    color: '#A1A1AA',
-    fontSize: normalize(14),
-    marginTop: 14,
-    lineHeight: normalize(22),
+    color: '#71717A',
+    fontSize: ms(14),
+    marginTop: vs(15),
+    lineHeight: ms(22),
   },
 
   /* FOOTER */
   footer: {
-    paddingHorizontal: width * 0.06,
+    paddingHorizontal: rs(30),
     alignItems: 'center',
   },
-
-  pagination: {
-    flexDirection: 'row',
-    marginBottom: 18,
-  },
-
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#333',
-    marginRight: 7,
-  },
-
-  activeDot: {
-    width: 22,
-    backgroundColor: '#8B5CF6',
-  },
-
   button: {
+    flexDirection: 'row',
     backgroundColor: '#8B5CF6',
-    height: normalize(54),
-    borderRadius: normalize(27),
+    height: vs(60),
+    borderRadius: rs(18),
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    // High contrast shadow for pure black background
     shadowColor: '#8B5CF6',
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-
   buttonText: {
     color: '#FFFFFF',
-    fontSize: normalize(16),
+    fontSize: ms(16),
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
-
+  btnArrow: {
+    width: rs(24),
+    height: rs(24),
+    borderRadius: rs(12),
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: rs(12),
+  },
+  arrowChar: {
+    color: '#8B5CF6', 
+    fontWeight: '900', 
+    fontSize: ms(14)
+  },
   footerNote: {
-    color: '#666',
-    fontSize: normalize(12),
-    marginTop: 10,
+    color: '#3F3F46',
+    fontSize: ms(11),
+    marginTop: vs(15),
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,325 +10,412 @@ import {
   Platform,
   PixelRatio,
   ScrollView,
+  StatusBar,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
+// ─── Responsive Utilities ──────────────────────────────────────────────────
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-// Scale utility for responsiveness
-const scale = width / 375;
-const normalize = (size) => Math.round(PixelRatio.roundToNearestPixel(size * scale));
+const isSmall   = SCREEN_W < 360;
+const isMedium  = SCREEN_W >= 360 && SCREEN_W < 414;
+const isLarge   = SCREEN_W >= 414 && SCREEN_W < 768;
+const isTablet  = SCREEN_W >= 768;
 
+const CONTENT_W = isTablet ? Math.min(SCREEN_W * 0.6, 520) : SCREEN_W;
+const BASE_W = 375;
+const BASE_H = 812;
+
+const scale  = CONTENT_W / BASE_W;
+const vscale = SCREEN_H  / BASE_H;
+
+const rs = (size) =>
+  Math.round(PixelRatio.roundToNearestPixel(
+    isTablet ? size * Math.min(scale, 1.25) : size * scale
+  ));
+
+const vs = (size) =>
+  Math.round(PixelRatio.roundToNearestPixel(
+    size * Math.max(vscale, isSmall ? 0.82 : 0.88)
+  ));
+
+const ms = (size, factor = 0.5) =>
+  Math.round(size + (rs(size) - size) * factor);
+
+const adaptive = ({ small, medium, large, tablet }) => {
+  if (isTablet) return tablet ?? large ?? medium ?? small;
+  if (isLarge)  return large  ?? medium ?? small;
+  if (isMedium) return medium ?? small;
+  return small;
+};
+
+// ─── Entrance Animation Hook ───────────────────────────────────────────────
+const useEntrance = (delay = 0) => {
+  const opacity    = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity,    { toValue: 1, duration: 520, delay, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 520, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  return { opacity, transform: [{ translateY }] };
+};
+
+// ─── Main Component ────────────────────────────────────────────────────────
 const AuthScreen = ({ onFinish }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [focusedInput, setFocusedInput] = useState(null); // 'user' or 'pass'
+  const [focused,  setFocused]  = useState(null);
+  const [showPass, setShowPass] = useState(false);
 
-  const handleContinue = () => {
-    if (username && password) {
-      onFinish({ username, password });
-    }
-  };
+  const isValid = username.length > 0 && password.length > 0;
+
+  // Animation Sequences
+  const a0 = useEntrance(60);
+  const a1 = useEntrance(150);
+  const a3 = useEntrance(330);
+  const a4 = useEntrance(420);
+  const a5 = useEntrance(510);
 
   return (
-    <View style={styles.mainContainer}>
-      {/* Dynamic Background Glows */}
-      <View style={[styles.glow, styles.topGlow]} />
-      <View style={[styles.glow, styles.bottomGlow]} />
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
 
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
+      <SafeAreaView style={s.safe}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
           >
-            {/* 1. Header Section */}
-            <View style={styles.header}>
-              <View style={styles.brandBadge}>
-                <Text style={styles.brandBadgeText}>SECURE ACCESS</Text>
-              </View>
-              <Text style={styles.title}>Welcome back</Text>
-              <Text style={styles.subtitle}>
-                Sign in to Kynect and jump back into the action with your squad.
-              </Text>
-            </View>
+            <ScrollView
+              contentContainerStyle={s.scroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={true}
+            >
+              <View style={s.card}>
+                
+                {/* 1. TOP BAR */}
+                <Animated.View style={[s.topBar, a0]}>
+                  <Text style={s.logo}>Kynect</Text>
+                  <View style={s.liveBadge}>
+                    <View style={s.liveDot} />
+                    <Text style={s.liveText}>SYSTEM ONLINE</Text>
+                  </View>
+                </Animated.View>
 
-            {/* 2. Form Section */}
-            <View style={styles.form}>
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>USERNAME</Text>
-                <View style={[
-                  styles.inputContainer, 
-                  focusedInput === 'user' && styles.inputContainerFocused
-                ]}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your username"
-                    placeholderTextColor="#555"
-                    value={username}
-                    onChangeText={setUsername}
-                    onFocus={() => setFocusedInput('user')}
-                    onBlur={() => setFocusedInput(null)}
-                    autoCapitalize="none"
-                  />
+                {/* 2. HERO SECTION */}
+                <Animated.View style={[s.hero, a1]}>
+                  <Text style={s.heading}>
+                    Welcome{'\n'}back<Text style={s.dot}>.</Text>
+                  </Text>
+                  <Text style={s.sub}>
+                    Sign in to access your squad's{'\n'}command center and start playing.
+                  </Text>
+                </Animated.View>
+
+                {/* 3. FORM SECTION */}
+                <View style={s.form}>
+                  <Animated.View style={a3}>
+                    <Text style={s.label}>Username or Email</Text>
+                    <View style={[s.inputWrap, focused === 'user' && s.inputFocused]}>
+                      <Feather
+                        name="user"
+                        size={rs(18)}
+                        color={focused === 'user' ? '#8B5CF6' : '#3A3A4A'}
+                        style={s.icoLeft}
+                      />
+                      <TextInput
+                        style={s.input}
+                        placeholder="Enter username or email"
+                        placeholderTextColor="#2E2E3A"
+                        value={username}
+                        onChangeText={setUsername}
+                        onFocus={() => setFocused('user')}
+                        onBlur={() => setFocused(null)}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        selectionColor="#8B5CF6"
+                      />
+                      {username.length > 3 && (
+                        <View style={s.checkCircle}>
+                          <Feather name="check" size={rs(12)} color="#10B981" />
+                        </View>
+                      )}
+                    </View>
+                  </Animated.View>
+
+                  <Animated.View style={[s.fieldGap, a4]}>
+                    <Text style={s.label}>Password</Text>
+                    <View style={[s.inputWrap, focused === 'pass' && s.inputFocused]}>
+                      <Feather
+                        name="lock"
+                        size={rs(18)}
+                        color={focused === 'pass' ? '#8B5CF6' : '#3A3A4A'}
+                        style={s.icoLeft}
+                      />
+                      <TextInput
+                        style={s.input}
+                        placeholder="Enter your password"
+                        placeholderTextColor="#2E2E3A"
+                        secureTextEntry={!showPass}
+                        value={password}
+                        onChangeText={setPassword}
+                        onFocus={() => setFocused('pass')}
+                        onBlur={() => setFocused(null)}
+                        selectionColor="#8B5CF6"
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPass(!showPass)}
+                        activeOpacity={0.7}
+                      >
+                        <Feather
+                          name={showPass ? 'eye-off' : 'eye'}
+                          size={rs(18)}
+                          color={showPass ? '#8B5CF6' : '#3A3A4A'}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={s.forgot} activeOpacity={0.7}>
+                      <Text style={s.forgotText}>Forgot password?</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                 </View>
-              </View>
 
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>PASSWORD</Text>
-                <View style={[
-                  styles.inputContainer, 
-                  focusedInput === 'pass' && styles.inputContainerFocused
-                ]}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••••••"
-                    placeholderTextColor="#555"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                    onFocus={() => setFocusedInput('pass')}
-                    onBlur={() => setFocusedInput(null)}
-                  />
-                </View>
-                <TouchableOpacity style={styles.forgotPass}>
-                  <Text style={styles.forgotPassText}>Forgot Password?</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                {/* 4. FOOTER SECTION */}
+                <Animated.View style={[s.footer, a5]}>
+                  <TouchableOpacity
+                    style={[s.btn, !isValid && s.btnOff]}
+                    activeOpacity={0.85}
+                    onPress={() => isValid && onFinish?.({ username, password })}
+                    disabled={!isValid}
+                  >
+                    <Text style={[s.btnText, !isValid && s.btnTextOff]}>
+                      Get Started
+                    </Text>
+                    {isValid && (
+                      <View style={s.btnArrow}>
+                        <Feather name="arrow-right" size={rs(16)} color="#8B5CF6" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
 
-            {/* 3. Decorative Trust Section */}
-            <View style={styles.trustCard}>
-              <View style={styles.shieldIcon}>
-                <View style={styles.shieldInner} />
-              </View>
-              <View style={styles.trustTextContainer}>
-                <Text style={styles.trustTitle}>End-to-end Encrypted</Text>
-                <Text style={styles.trustSub}>Your credentials are protected by industry standard security protocols.</Text>
-              </View>
-            </View>
+                  <View style={s.secRow}>
+                    <MaterialCommunityIcons name="shield-lock-outline" size={rs(12)} color="#2A2A35" />
+                    <Text style={s.secText}>SECURED Auth</Text>
+                    <View style={s.secDot} />
+                    <Text style={s.secText}>END-TO-END ENCRYPTED</Text>
+                  </View>
 
-            {/* 4. Footer Section (Bottom) */}
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  (!username || !password) && styles.buttonDisabled
-                ]}
-                activeOpacity={0.8}
-                onPress={handleContinue}
-                disabled={!username || !password}
-              >
-                <Text style={styles.buttonText}>Continue to Arena</Text>
-              </TouchableOpacity>
-              
-              <Text style={styles.termsText}>
-                By logging in, you agree to our <Text style={styles.link}>Terms of Service</Text>
-              </Text>
-            </View>
+                  <Text style={s.terms}>
+                    By continuing you agree to our{' '}
+                    <Text style={s.termsLink}>Terms</Text>
+                    {' & '}
+                    <Text style={s.termsLink}>Privacy Policy</Text>
+                  </Text>
+                </Animated.View>
 
-          </ScrollView>
-        </KeyboardAvoidingView>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: '#0F0F10', // Deep metallic black
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
+// ─── Stylesheet ────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#000000' },
+  safe: { flex: 1 },
+  scroll: {
     flexGrow: 1,
-    paddingHorizontal: width * 0.07,
-    paddingTop: height * 0.05,
-    paddingBottom: 20,
-    justifyContent: 'space-between', // Ensures footer stays at bottom if screen is tall
+    alignItems: isTablet ? 'center' : 'stretch',
+    paddingHorizontal: isTablet ? 0 : rs(adaptive({ small: 20, medium: 24, large: 28 })),
+    paddingTop: vs(adaptive({ small: 10, medium: 16, large: 20, tablet: 40 })),
+    paddingBottom: vs(40),
   },
-  /* GLOW EFFECTS */
-  glow: {
-    position: 'absolute',
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: (width * 0.8) / 2,
-    opacity: 0.12,
+  card: {
+    width: isTablet ? Math.min(SCREEN_W * 0.6, 520) : '100%',
+    flex: 1,
+    justifyContent: 'space-between', // Pushes footer naturally to the bottom
   },
-  topGlow: {
-    top: -width * 0.3,
-    right: -width * 0.2,
-    backgroundColor: '#8B5CF6',
-  },
-  bottomGlow: {
-    bottom: -width * 0.3,
-    left: -width * 0.2,
-    backgroundColor: '#22D3EE',
-  },
-  /* HEADER */
-  header: {
-    marginBottom: normalize(30),
-  },
-  brandBadge: {
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-  },
-  brandBadgeText: {
-    color: '#8B5CF6',
-    fontSize: normalize(10),
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  title: {
-    fontSize: normalize(34),
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: normalize(15),
-    color: '#94A3B8',
-    marginTop: 10,
-    lineHeight: normalize(22),
-  },
-  /* FORM */
-  form: {
-    gap: 20,
-  },
-  inputWrapper: {
-    width: '100%',
-  },
-  label: {
-    color: '#64748B',
-    fontSize: normalize(11),
-    fontWeight: '700',
-    marginBottom: 8,
-    letterSpacing: 1.5,
-  },
-  inputContainer: {
-    height: normalize(56),
-    backgroundColor: '#1E1E20',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#2D2D30',
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-    // Smooth transition simulation
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 10,
-  },
-  inputContainerFocused: {
-    borderColor: '#8B5CF6',
-    backgroundColor: '#1A1625',
-    shadowOpacity: 0.2,
-    elevation: 4,
-  },
-  input: {
-    color: '#FFFFFF',
-    fontSize: normalize(16),
-    fontWeight: '500',
-  },
-  forgotPass: {
-    alignSelf: 'flex-end',
-    marginTop: 10,
-  },
-  forgotPassText: {
-    color: '#8B5CF6',
-    fontSize: normalize(13),
-    fontWeight: '600',
-  },
-  /* TRUST CARD */
-  trustCard: {
+
+  // Top Bar
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 16,
-    borderRadius: 20,
-    marginTop: 30,
+    justifyContent: 'space-between',
+    marginBottom: vs(adaptive({ small: 25, medium: 32, large: 35 })),
+  },
+  logo: {
+    color: '#FFFFFF',
+    fontSize: ms(adaptive({ small: 20, medium: 22, large: 24 })),
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    paddingHorizontal: rs(10),
+    paddingVertical: vs(5),
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
-  shieldIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(34, 211, 238, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
+  liveDot: {
+    width: rs(6),
+    height: rs(6),
+    borderRadius: rs(3),
+    backgroundColor: '#10B981',
+    marginRight: rs(6),
   },
-  shieldInner: {
-    width: 14,
-    height: 18,
-    borderWidth: 2,
-    borderColor: '#22D3EE',
-    borderRadius: 2,
+  liveText: {
+    color: '#10B981',
+    fontSize: ms(9),
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  trustTextContainer: {
-    flex: 1,
+
+  // Hero
+  hero: {
+    marginBottom: vs(adaptive({ small: 25, medium: 30, large: 35 })),
   },
-  trustTitle: {
-    color: '#F1F5F9',
-    fontSize: normalize(13),
+  heading: {
+    color: '#FFFFFF',
+    fontSize: ms(adaptive({ small: 36, medium: 42, large: 46 })),
+    fontWeight: '900',
+    lineHeight: ms(adaptive({ small: 42, medium: 48, large: 52 })),
+    letterSpacing: -1,
+  },
+  dot: { color: '#8B5CF6' },
+  sub: {
+    color: '#71717A',
+    fontSize: ms(adaptive({ small: 14, medium: 15, large: 16 })),
+    lineHeight: ms(22),
+    marginTop: vs(12),
+  },
+
+  // Form
+  form: {
+    flex: 1, // Allows form to take space and footer to sit at bottom
+  },
+  fieldGap: {
+    marginTop: vs(20),
+  },
+  label: {
+    color: '#52525B',
+    fontSize: ms(12),
     fontWeight: '700',
+    marginBottom: vs(8),
+    letterSpacing: 0.5,
   },
-  trustSub: {
-    color: '#64748B',
-    fontSize: normalize(11),
-    marginTop: 2,
-  },
-  /* FOOTER */
-  footer: {
-    marginTop: 40,
+  inputWrap: {
+    flexDirection: 'row',
     alignItems: 'center',
+    height: vs(adaptive({ small: 54, medium: 60, large: 62 })),
+    backgroundColor: '#0A0A0A',
+    borderRadius: rs(16),
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
+    paddingHorizontal: rs(16),
   },
-  button: {
-    backgroundColor: '#8B5CF6',
-    width: '100%',
-    height: normalize(58),
-    borderRadius: 18,
+  inputFocused: {
+    borderColor: '#8B5CF6',
+    backgroundColor: '#0F0F1A',
+  },
+  icoLeft: { marginRight: rs(12) },
+  input: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: ms(15),
+    fontWeight: '600',
+  },
+  checkCircle: {
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
+    backgroundColor: 'rgba(16,185,129,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  forgot: {
+    alignSelf: 'flex-end',
+    marginTop: vs(10),
+  },
+  forgotText: {
+    color: '#52525B',
+    fontSize: ms(12),
+    fontWeight: '600',
+  },
+
+  // Footer
+  footer: {
+    marginTop: vs(40),
+    alignItems: 'center',
+  },
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    height: vs(adaptive({ small: 56, medium: 62, large: 64 })),
+    borderRadius: rs(18),
+    width: '100%',
     shadowColor: '#8B5CF6',
     shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
-  buttonDisabled: {
-    backgroundColor: '#2D2D30',
+  btnOff: {
+    backgroundColor: '#161616',
     shadowOpacity: 0,
     elevation: 0,
   },
-  buttonText: {
+  btnText: {
     color: '#FFFFFF',
-    fontSize: normalize(17),
+    fontSize: ms(16),
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  termsText: {
-    color: '#475569',
-    fontSize: normalize(12),
-    marginTop: 18,
+  btnTextOff: { color: '#3F3F46' },
+  btnArrow: {
+    width: rs(26),
+    height: rs(26),
+    borderRadius: rs(13),
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: rs(12),
+  },
+  secRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: rs(6),
+    marginTop: vs(24),
+  },
+  secText: {
+    color: '#3F3F46',
+    fontSize: ms(9),
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  secDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#27272A' },
+  terms: {
+    color: '#3F3F46',
+    fontSize: ms(11),
+    marginTop: vs(16),
     textAlign: 'center',
+    lineHeight: ms(18),
   },
-  link: {
-    color: '#8B5CF6',
-    fontWeight: '600',
-  },
+  termsLink: { color: '#8B5CF6', fontWeight: '700', textDecorationLine: 'underline' },
 });
 
 export default AuthScreen;
