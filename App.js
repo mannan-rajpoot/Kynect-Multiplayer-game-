@@ -1,56 +1,113 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Animated, Dimensions, Easing } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { View, StyleSheet, StatusBar, Animated, Easing, Dimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import IntroSplashScreen from './screens/IntroSplashScreen';
-import WelcomeScreen from './screens/WelcomeScreen';
-import AuthScreen from './screens/AuthScreen';
 
-const { width } = Dimensions.get('window');
+// Firebase
+import { auth, db } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+
+// Screens
+import IntroSplashScreen from './screens/IntroSplashScreen';
+import WelcomeScreen     from './screens/WelcomeScreen';
+import AuthScreen        from './screens/AuthScreen';
+import SetupScreen       from './screens/SetupScreen';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+
+// ─── MEMOIZED SCREEN WRAPPER ──────────────────────────────────────────
+// This prevents the screen from re-rendering while it is in the background
+const ScreenContent = memo(({ name, onFinish }) => {
+  switch (name) {
+    case 'splash':  return <IntroSplashScreen onFinish={onFinish} />;
+    case 'welcome': return <WelcomeScreen     onFinish={onFinish} />;
+    case 'auth':    return <AuthScreen        onFinish={onFinish} />;
+    case 'setup':   return <SetupScreen       onFinish={onFinish} />;
+    case 'main':    return <View style={styles.mainPlaceholder} />;
+    default: return null;
+  }
+});
 
 export default function App() {
-  // 'splash' | 'welcome' | 'auth'
-  const [screen, setScreen] = useState('splash');
+  // Navigation States
+  const [currentScreen, setCurrentScreen] = useState('splash'); // The background
+  const [nextScreen, setNextScreen] = useState(null);           // The sliding layer
+  
+  // Logic States
+  const destinationPath = useRef('welcome');
+  const isTransitioning = useRef(false);
 
-  // Animation Refs
-  const splashAnim = useRef(new Animated.Value(0)).current; // 0 to 1
-  const welcomeAnim = useRef(new Animated.Value(0)).current; // 0 to 1
-  const authAnim = useRef(new Animated.Value(0)).current; // 0 to 1
+  // Animation Value
+  const slideAnim = useRef(new Animated.Value(SCREEN_W)).current;
 
-  const transition = (fromVar, toVar, nextScreen) => {
-    Animated.parallel([
-      Animated.timing(fromVar, {
-        toValue: -width,
-        duration: 500,
-        easing: Easing.bezier(0.4, 0, 0.2, 1),
+  /**
+   * THE FLICKER-FREE ENGINE
+   * This is the "Double-Buffer" logic.
+   */
+  const triggerTransition = useCallback((target) => {
+    if (isTransitioning.current || target === currentScreen) return;
+    isTransitioning.current = true;
+
+    // 1. Render the NEXT screen on top of the CURRENT one (but off-screen)
+    setNextScreen(target);
+
+    // 2. We wait 60ms to ensure the "Next" screen has actually 
+    // mounted and rendered its initial frame before we start sliding.
+    // This removes the "blank frame" flicker.
+    setTimeout(() => {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 550,
+        easing: Easing.bezier(0.33, 1, 0.68, 1), // Smooth ease-out
         useNativeDriver: true,
-      }),
-      Animated.timing(toVar, {
-        toValue: 1, // Using 1 as a "visible" state
-        duration: 600,
-        easing: Easing.bezier(0.4, 0, 0.2, 1),
-        useNativeDriver: true,
-      }),
-    ]).start(() => setScreen(nextScreen));
-  };
+      }).start(() => {
+        // 3. Only AFTER animation is 100% complete, we swap the roles.
+        setCurrentScreen(target);
+        setNextScreen(null);
+        slideAnim.setValue(SCREEN_W);
+        isTransitioning.current = false;
+      });
+    }, 60);
+  }, [currentScreen, slideAnim]);
 
-  const handleSplashFinish = () => {
-    // Initial entrance of Welcome
-    Animated.timing(welcomeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start(() => setScreen('welcome'));
-  };
+  /**
+   * FIREBASE AUTH OBSERVER
+   * We calculate the destination but we don't move until a screen says "onFinish"
+   */
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const setupCompleted = userDoc.exists() ? userDoc.data().setupCompleted : false;
+          destinationPath.current = setupCompleted ? 'main' : 'setup';
+        } catch {
+          destinationPath.current = 'auth';
+        }
+      } else {
+        destinationPath.current = 'welcome';
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleWelcomeFinish = () => {
-    setScreen('auth');
-    // We animate authAnim from 0 to 1
-    Animated.spring(authAnim, {
-      toValue: 1,
-      tension: 20,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
+  // Completion Handlers
+  const onSplashDone  = () => triggerTransition(destinationPath.current);
+  const onWelcomeDone = () => triggerTransition('auth');
+  const onAuthDone    = () => triggerTransition(destinationPath.current);
+  const onSetupDone   = () => triggerTransition('main');
+
+  /**
+   * SELECTS THE CORRECT HANDLER FOR THE ACTIVE SCREEN
+   */
+  const getHandler = (name) => {
+    switch (name) {
+      case 'splash':  return onSplashDone;
+      case 'welcome': return onWelcomeDone;
+      case 'auth':    return onAuthDone;
+      case 'setup':   return onSetupDone;
+      default:        return null;
+    }
   };
 
   return (
@@ -58,32 +115,35 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-        {screen === 'splash' && (
-          <IntroSplashScreen onFinish={handleSplashFinish} />
-        )}
+        {/* 
+            LAYER 1: BOTTOM BUFFER 
+            This is the screen you are coming FROM. 
+            It is static and cannot flicker because its 'name' prop 
+            doesn't change until the transition is totally finished.
+        */}
+        <View style={styles.screenLayer}>
+          <ScreenContent 
+            name={currentScreen} 
+            onFinish={getHandler(currentScreen)} 
+          />
+        </View>
 
-        {screen === 'welcome' && (
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: welcomeAnim }]}>
-            <WelcomeScreen onFinish={handleWelcomeFinish} />
-          </Animated.View>
-        )}
-
-        {screen === 'auth' && (
+        {/* 
+            LAYER 2: TOP BUFFER (The Slide)
+            This is the screen you are going TO.
+        */}
+        {nextScreen && (
           <Animated.View 
             style={[
-              StyleSheet.absoluteFill, 
-              { 
-                opacity: authAnim,
-                transform: [{ 
-                  translateY: authAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0]
-                  }) 
-                }] 
-              }
+              styles.screenLayer,
+              styles.topShadow,
+              { transform: [{ translateX: slideAnim }] }
             ]}
           >
-            <AuthScreen onFinish={() => console.log('Main App Navigation')} />
+            <ScreenContent 
+              name={nextScreen} 
+              onFinish={getHandler(nextScreen)} 
+            />
           </Animated.View>
         )}
       </View>
@@ -94,6 +154,23 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: '#000000',
+  },
+  screenLayer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+  },
+  topShadow: {
+    // This shadow adds depth and covers the "edge" of the sliding page
+    shadowColor: '#000',
+    shadowOffset: { width: -15, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 20,
+    elevation: 30,
+    zIndex: 99,
+  },
+  mainPlaceholder: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
 });

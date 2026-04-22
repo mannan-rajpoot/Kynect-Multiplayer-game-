@@ -16,9 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // ─── Responsive Utilities ──────────────────────────────────────────────────
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-const isSmall   = SCREEN_W < 360;
-const isMedium  = SCREEN_W >= 360 && SCREEN_W < 414;
-const isTablet  = SCREEN_W >= 768;
+const isSmall  = SCREEN_W < 360;
+const isMedium = SCREEN_W >= 360 && SCREEN_W < 414;
+const isTablet = SCREEN_W >= 768;
 
 const BASE_W = 375;
 const BASE_H = 812;
@@ -29,8 +29,27 @@ const ms = (size, factor = 0.5) => Math.round(size + (rs(size) - size) * factor)
 
 const adaptive = ({ small, medium, large, tablet }) => {
   if (isTablet) return tablet ?? large ?? medium ?? small;
-  return medium ?? small;
+  if (!isSmall && !isMedium) return large ?? medium ?? small;
+  if (isMedium) return medium ?? small;
+  return small;
 };
+
+// ─── Cross-platform shadow helper ─────────────────────────────────────────
+// On iOS: shadowColor/shadowOpacity/shadowRadius/shadowOffset
+// On Android: elevation + a wrapper trick for colored shadows
+const buttonShadow = Platform.select({
+  ios: {
+    shadowColor: '#8B5CF6',
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  android: {
+    elevation: 12,
+    // Android elevation uses the view's background color for the shadow tint;
+    // wrapping in a colored container gives the best colored-shadow effect.
+  },
+});
 
 // ─── Entrance Animation Hook ───────────────────────────────────────────────
 const useEntrance = (delay = 0) => {
@@ -47,13 +66,12 @@ const useEntrance = (delay = 0) => {
 
 // ─── Main Component ────────────────────────────────────────────────────────
 const WelcomeScreen = ({ onFinish }) => {
-  
-  // Animation sequences matching AuthScreen
-  const a0 = useEntrance(100);  // Logo
-  const a1 = useEntrance(250);  // Illustration
-  const a2 = useEntrance(400);  // Headline
-  const a3 = useEntrance(550);  // Subheadline
-  const a4 = useEntrance(700);  // Footer
+
+  const a0 = useEntrance(100);   // Logo
+  const a1 = useEntrance(250);   // Illustration
+  const a2 = useEntrance(400);   // Headline block
+  const a3 = useEntrance(550);   // Subheadline
+  const a4 = useEntrance(700);   // Footer
 
   return (
     <View style={s.root}>
@@ -61,7 +79,7 @@ const WelcomeScreen = ({ onFinish }) => {
 
       <SafeAreaView style={s.safe}>
         <View style={s.inner}>
-          
+
           {/* 1. HEADER / LOGO */}
           <Animated.View style={[s.header, a0]}>
             <Text style={s.logo}>Kynect<Text style={s.dot}>.</Text></Text>
@@ -102,20 +120,26 @@ const WelcomeScreen = ({ onFinish }) => {
 
           {/* 4. FOOTER / BUTTON */}
           <Animated.View style={[s.footer, a4]}>
-            <TouchableOpacity
-              style={s.button}
-              activeOpacity={0.85}
-              onPress={onFinish}
-            >
-              <Text style={s.buttonText}>Get Started</Text>
-              <View style={s.btnArrow}>
-                 <Text style={s.arrowChar}>→</Text>
-              </View>
-            </TouchableOpacity>
+            {/*
+              Android colored-shadow trick:
+              Wrap the button in a View that carries the elevation and
+              has the same background + border-radius as the button.
+              This makes Android use the purple background for shadow tinting.
+            */}
+            <View style={s.buttonShadowWrap}>
+              <TouchableOpacity
+                style={s.button}
+                activeOpacity={0.85}
+                onPress={onFinish}
+              >
+                <Text style={s.buttonText}>Get Started</Text>
+                <View style={s.btnArrow}>
+                  <Text style={s.arrowChar}>→</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
 
-            <Text style={s.footerNote}>
-              Free to play | Secured Access
-            </Text>
+            <Text style={s.footerNote}>Free to play | Mannan Rajpoot</Text>
           </Animated.View>
 
         </View>
@@ -126,9 +150,9 @@ const WelcomeScreen = ({ onFinish }) => {
 
 // ─── Stylesheet ────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { 
-    flex: 1, 
-    backgroundColor: '#000000' // Pure Black Background
+  root: {
+    flex: 1,
+    backgroundColor: '#000000',
   },
   safe: { flex: 1 },
   inner: {
@@ -204,6 +228,23 @@ const s = StyleSheet.create({
     paddingHorizontal: rs(30),
     alignItems: 'center',
   },
+  // Android shadow wrapper — carries elevation so the purple bg tints the shadow
+  buttonShadowWrap: {
+    width: '100%',
+    borderRadius: rs(18),
+    backgroundColor: '#8B5CF6',   // must match button bg for Android tint
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOpacity: 0.55,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 8 },
+      },
+      android: {
+        elevation: 14,
+      },
+    }),
+  },
   button: {
     flexDirection: 'row',
     backgroundColor: '#8B5CF6',
@@ -212,12 +253,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    // High contrast shadow for pure black background
-    shadowColor: '#8B5CF6',
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    overflow: 'hidden', // keeps ripple inside on Android
   },
   buttonText: {
     color: '#FFFFFF',
@@ -226,18 +262,19 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
   },
   btnArrow: {
-    width: rs(24),
-    height: rs(24),
-    borderRadius: rs(12),
+    width: rs(28),
+    height: rs(28),
+    borderRadius: rs(14),
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: rs(12),
   },
   arrowChar: {
-    color: '#8B5CF6', 
-    fontWeight: '900', 
-    fontSize: ms(14)
+    color: '#8B5CF6',
+    fontWeight: '900',
+    fontSize: ms(25),
+    bottom: 8
   },
   footerNote: {
     color: '#3F3F46',
