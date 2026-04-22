@@ -19,6 +19,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
+// Local Persistence
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 // Firebase imports
 import { auth, db } from '../firebase';
 import {
@@ -193,6 +196,9 @@ const AuthScreen = ({ onFinish }) => {
           lastLogin: serverTimestamp(),
         });
 
+        // Persist username just in case they are sent back to setup screen
+        await AsyncStorage.setItem('pendingUsername', trimmedUsername);
+
         showToast('Welcome back 👋', TOAST_TYPE.SUCCESS);
         setTimeout(() => onFinish?.(), 1000); 
 
@@ -216,6 +222,10 @@ const AuthScreen = ({ onFinish }) => {
         });
 
         await batch.commit();
+
+        // PERSIST USERNAME LOCALLY: This ensures SetupScreen can see it even after reload
+        await AsyncStorage.setItem('pendingUsername', trimmedUsername);
+
         showToast('Account created successfully 🎉', TOAST_TYPE.SUCCESS);
         setTimeout(() => onFinish?.(), 1000);
       }
